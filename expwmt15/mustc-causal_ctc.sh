@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-export SRC=en
-export TGT=zh
-export DATA=~/simultaneous_translation/simul_confi/data_bins/mustc_${SRC}${TGT}
-export WANDB_START_METHOD=thread
-export FAIRSEQ=~/simultaneous_translation/sinkhorn-simultrans/fairseq
+SRC=en
+TGT=zh
+DATA=~/simultaneous_translation/simul_confi/data_bins/mustc_${SRC}${TGT}
+WANDB_START_METHOD=thread
+FAIRSEQ=~/simultaneous_translation/sinkhorn-simultrans/fairseq
 USERDIR=~/simultaneous_translation/sinkhorn-simultrans/simultaneous_translation
-export PYTHONPATH="$FAIRSEQ:$PYTHONPATH"
+PYTHONPATH="$FAIRSEQ:$PYTHONPATH"
 
 
 DELAY=1
