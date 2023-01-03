@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 . ./data_path.sh
-DELAY=$1
+DELAY=1
 TASK=sinkhorn_delay${DELAY}_ft
 
 python -m fairseq_cli.train ${DATA} --user-dir ${USERDIR} \
