@@ -620,6 +620,31 @@ def sinkhorn_encoder(args):
 
     base_architecture(args)
 
+@register_model_architecture(
+    "sinkhorn_encoder", "sinkhorn_encoder_iwslt_de_en"
+)
+def sinkhorn_encoder_iwslt_de_en(args):
+    args.encoder_embed_dim = getattr(args, "encoder_embed_dim", 512)
+    args.decoder_embed_dim = args.encoder_embed_dim
+    args.encoder_ffn_embed_dim = getattr(args, "encoder_ffn_embed_dim", 1024)
+    args.encoder_layers = getattr(args, "encoder_layers", 6)
+    args.encoder_attention_heads = getattr(args, "encoder_attention_heads", 4)
+
+    args.encoder_normalize_before = getattr(
+        args, "encoder_normalize_before", True)
+    args.non_causal_layers = getattr(args, "non_causal_layers", 3)
+
+    args.max_source_positions = getattr(args, "max_source_positions", 1024)
+    args.max_target_positions = getattr(args, "max_target_positions", 1024)
+    args.dropout = getattr(args, "dropout", 0.1)
+
+    args.share_decoder_input_output_embed = True
+
+    args.upsample_ratio = getattr(args, "upsample_ratio", 2)
+    args.delay = getattr(args, "delay", 1)
+
+    base_architecture(args)
+
 
 @register_model_architecture(
     "sinkhorn_encoder", "sinkhorn_encoder_small"

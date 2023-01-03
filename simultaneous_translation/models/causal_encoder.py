@@ -82,7 +82,7 @@ def causal_encoder(args):
 @register_model_architecture(
     "causal_encoder", "causal_encoder_iwslt_de_en"
 )
-def causal_encoder_small(args):
+def causal_encoder_iwslt_de_en(args):
     args.encoder_embed_dim = getattr(args, "encoder_embed_dim", 512)
     args.encoder_ffn_embed_dim = getattr(args, "encoder_ffn_embed_dim", 1024)
     args.encoder_layers = getattr(args, "encoder_layers", 6)
