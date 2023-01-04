@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
-. ./data_path.sh
-DELAY=$1
+
+export SRC=de
+export TGT=en
+export DATA=/livingrooms/george/wmt15/de-en/data-bin
+export WANDB_START_METHOD=thread
+export FAIRSEQ=~/utility/fairseq
+USERDIR=`realpath ../simultaneous_translation`
+export PYTHONPATH="$FAIRSEQ:$PYTHONPATH"
+. ~/envs/apex/bin/activate
+
+
+DELAY=1
 TASK=ctc_delay${DELAY}
 
 python -m fairseq_cli.train ${DATA} --user-dir ${USERDIR} \
