@@ -2,21 +2,7 @@ set -e
 
 USERDIR=~/simultaneous_translation/sinkhorn-simultrans/simultaneous_translation
 
-CHECKPOINT=${EXP}/checkpoints/${MODEL}/checkpoint_best.pt
-
-PORT=12345
-WORKERS=2
-BLEU_TOK=13a
-UNIT=word
-DATANAME=$(basename $(dirname $(dirname ${DATA})))
-OUTPUT=${DATANAME}_${TGT}-results/${MODEL}.${DATANAME}
-mkdir -p ${OUTPUT}
-
-if [[ ${TGT} == "zh" ]]; then
-  BLEU_TOK=zh
-  UNIT=char
-  NO_SPACE="--no-space"
-fi
+CHECKPOINT=/home/liumengge/simultaneous_translation/sinkhorn-simultrans/checkpoints/sinkhorn_delay1_ft/checkpoint_best.pt
 
 SRC=en
 TGT=zh
@@ -28,6 +14,18 @@ mustc_data_raw=~/simultaneous_translation/simul_confi/data_raw/mustc_enzh
 mustc_data_bin=~/simultaneous_translation/simul_confi/data_bins/mustc_enzh
 
 OUTPUT=/home/liumengge/simultaneous_translation/sinkhorn-simultrans/simul_decode/mustc_enzh/$test_name/best_result_${delta}
+mkdir -p ${OUTPUT}
+
+PORT=12345
+WORKERS=2
+BLEU_TOK=13a
+UNIT=word
+if [[ ${TGT} == "zh" ]]; then
+  BLEU_TOK=zh
+  UNIT=char
+  NO_SPACE="--no-space"
+fi
+
 
 simuleval \
   --src $SRC --tgt $TGT \
