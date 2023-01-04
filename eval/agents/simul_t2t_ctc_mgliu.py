@@ -10,7 +10,6 @@ import logging
 from fairseq import checkpoint_utils, tasks, utils
 import sentencepiece as spm
 import torch
-import kenlm
 
 import re
 import codecs
@@ -62,12 +61,6 @@ class SimulTransTextAgentCTC(TextAgent):
         parser.add_argument("--non-strict", default=False, action="store_true",
                             help="load parameters from checkpoint with strict=False.")
         parser.add_argument("--workers", type=int, default=1)
-        parser.add_argument('--lm-path', type=str, default="",
-                            help='path to your kenlm model.')
-        parser.add_argument("--lm-weight", type=float, default=0,
-                            help='the log prob is interpolated as: model_logp + lm_weight * lm_logp.')
-        parser.add_argument("--lm-topk", type=int, default=3,
-                            help='rescore top-k elements. If <= 0 then use all elements.')
 
         # mgliu
         parser.add_argument("--src", type=str, default='en',
@@ -167,11 +160,6 @@ class SimulTransTextAgentCTC(TextAgent):
         self.pre_tokenizer = task.pre_tokenizer
 
         self.lm = None
-        self.lm_topk = args.lm_topk
-        self.lm_weight = args.lm_weight
-        if self.lm_weight > 0 and args.lm_path != "":
-            self.lm = kenlm.LanguageModel(args.lm_path)
-            logger.info("lm: {} weight: {}".format(args.lm_path, self.lm_weight))
 
         # logger.info(summary(self.model))
         logger.info("task: {}".format(task.__class__.__name__))
@@ -185,9 +173,6 @@ class SimulTransTextAgentCTC(TextAgent):
         states.enc_incremental_states = dict()
         states.last_token_index = self.blank_idx
 
-        if self.lm_weight > 0:
-            states.lm_states = kenlm.State()
-            self.lm.BeginSentenceWrite(states.lm_states)
 
     def build_states(self, args, client, sentence_id):
         # Initialize states here, for example add customized entry to states
@@ -359,7 +344,6 @@ class SimulTransTextAgentCTC(TextAgent):
             [states.decoder_out[:, :1]], log_probs=True
         )
 
-        index = self.lm_rescore(lprobs, states)
 
         if states.decoder_out.size(1) < 2:
             states.decoder_out = None
@@ -378,32 +362,3 @@ class SimulTransTextAgentCTC(TextAgent):
 
         return index
 
-    def lm_rescore(self, lprobs, states) -> int:
-        lprobs = lprobs.squeeze()
-
-        index = lprobs.argmax(dim=-1)
-
-        index = index.item()
-
-        if self.lm_weight > 0:
-            tgt_dict = self.dict["tgt"]
-            indices = range(len(tgt_dict))
-            if self.lm_topk > 0:
-                lprobs, indices = torch.topk(lprobs, self.lm_topk, dim=-1, sorted=False)
-
-            value = float("-inf")
-            best_state = None
-            for lp, i in zip(lprobs, indices):
-                tmp_state = kenlm.State()
-                token = tgt_dict.string([i])
-                cur_p = lp + self.lm.BaseScore(states.lm_states, token, tmp_state) * self.lm_weight
-                if cur_p > value:
-                    value = cur_p
-                    index = i
-                    best_state = tmp_state
-
-            # update lm states
-            if index != tgt_dict.bos():
-                states.lm_states = best_state
-
-        return index
