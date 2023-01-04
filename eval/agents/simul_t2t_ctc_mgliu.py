@@ -285,7 +285,7 @@ class SimulTransTextAgentCTC(TextAgent):
     def units_to_segment(self, units_queue, states):
         # return units_queue.pop()
         tokens = units_queue.value
-        if len(tokens) > self.max_len:  # for special error, infinite generate sub-word
+        if len(tokens) > 128:  # for special error, infinite generate sub-word
             return DEFAULT_EOS
         if "@@" in tokens[-1]:  # return when token not complete
             return
