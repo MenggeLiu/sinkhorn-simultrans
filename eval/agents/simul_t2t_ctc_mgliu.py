@@ -344,6 +344,11 @@ class SimulTransTextAgentCTC(TextAgent):
             [states.decoder_out[:, :1]], log_probs=True
         )
 
+        lprobs = lprobs.squeeze()
+
+        index = lprobs.argmax(dim=-1)
+
+        index = index.item()
 
         if states.decoder_out.size(1) < 2:
             states.decoder_out = None
