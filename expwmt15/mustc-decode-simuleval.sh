@@ -26,8 +26,9 @@ if [[ ${TGT} == "zh" ]]; then
   NO_SPACE="--no-space"
 fi
 
+gpu_id=1
 
-simuleval \
+CUDA_VISIBLE_DEVICES=$gpu_id simuleval \
   --src $SRC --tgt $TGT \
   --src_bpe_code $mustc_data_raw/bpe.30000.en \
   --agent ${AGENT} \
@@ -43,4 +44,4 @@ simuleval \
   ${NO_SPACE} \
   --scores \
   --port ${PORT} \
-  --workers ${WORKERS}
+  --workers ${WORKERS} --gpu
