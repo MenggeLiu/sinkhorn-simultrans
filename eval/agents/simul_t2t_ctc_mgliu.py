@@ -366,5 +366,21 @@ class SimulTransTextAgentCTC(TextAgent):
             self.model.decoder.clear_cache(states.dec_incremental_states)
             index = None
 
-        return index
+        if index != self.dict['tgt'].eos_index:
+            token = self.dict['tgt'].string([index])
+        else:
+            if states.finish_read():
+                token = self.dict['tgt'].eos_word
+            else:
+                return ''
+
+        if 50 > 0: # max len limit
+            # print(len(states.source), states.source)
+            # print(len(states.target), states.target)
+            if len(states.target) - len(states.source) > 50:
+                token = self.dict['tgt'].eos_word
+
+        torch.cuda.empty_cache()
+
+        return token
 
