@@ -7,17 +7,17 @@ FAIRSEQ=~/simultaneous_translation/sinkhorn-simultrans/fairseq
 USERDIR=~/simultaneous_translation/sinkhorn-simultrans/simultaneous_translation
 PYTHONPATH="$FAIRSEQ:$PYTHONPATH"
 
-DELAY=1
+DELAY=3
 TASK=sinkhorn_delay${DELAY}_ft
 
 save_dir=~/simultaneous_translation/sinkhorn-simultrans/checkpoints/$TASK
 
-CUDA_VISIBLE_DEVICES=4,5,6,7 python -m fairseq_cli.train ${DATA} --user-dir ${USERDIR} \
+CUDA_VISIBLE_DEVICES=0 python -m fairseq_cli.train ${DATA} --user-dir ${USERDIR} \
     -s ${SRC} -t ${TGT} \
-    --load-pretrained-encoder-from ~/simultaneous_translation/sinkhorn-simultrans/checkpoints/ctc_delay1/checkpoint_best.pt \
+    --load-pretrained-encoder-from ~/simultaneous_translation/sinkhorn-simultrans/checkpoints/ctc_delay${DELAY}/checkpoint_best.pt \
     --train-subset train \
-    --max-tokens 4000 \
-    --update-freq 2 \
+    --max-tokens 8000 \
+    --update-freq 4 \
     --task translation_infer \
     --inference-config-yaml infer_mt.yaml \
     --arch sinkhorn_encoder_iwslt_de_en --delay ${DELAY} --mask-ratio 0.5 \
@@ -28,7 +28,7 @@ CUDA_VISIBLE_DEVICES=4,5,6,7 python -m fairseq_cli.train ${DATA} --user-dir ${US
     --optimizer adam --lr 0.00025 --lr-scheduler inverse_sqrt \
     --warmup-updates 4000 \
     --max-update 50000 \
-    --scoring sacrebleu --sacrebleu-tokenizer ja-mecab \
+    --scoring sacrebleu --sacrebleu-tokenizer zh \
     --eval-bleu \
     --eval-bleu-args '{"beam": 5, "max_len_a": 1, "max_len_b": 50}' \
     --eval-bleu-remove-bpe \

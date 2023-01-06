@@ -2,7 +2,11 @@ set -e
 
 USERDIR=~/simultaneous_translation/sinkhorn-simultrans/simultaneous_translation
 
-CHECKPOINT=/home/liumengge/simultaneous_translation/sinkhorn-simultrans/checkpoints/sinkhorn_delay1_ft/checkpoint_best.pt
+
+delay=9
+port=12349
+
+CHECKPOINT=/home/liumengge/simultaneous_translation/sinkhorn-simultrans/checkpoints/sinkhorn_delay${delay}_ft/checkpoint_best.pt
 
 SRC=en
 TGT=zh
@@ -13,10 +17,11 @@ TGT_FILE=~/simultaneous_translation/simul_confi/data_raw/mustc_enzh/${test_name}
 mustc_data_raw=~/simultaneous_translation/simul_confi/data_raw/mustc_enzh
 mustc_data_bin=~/simultaneous_translation/simul_confi/data_bins/mustc_enzh
 
-OUTPUT=/home/liumengge/simultaneous_translation/sinkhorn-simultrans/simul_decode/mustc_enzh/$test_name/best_result_${delta}
+for test_waitk in 1 3 5 7 9 11 13 200; do
+
+OUTPUT=/home/liumengge/simultaneous_translation/sinkhorn-simultrans/simul_decode/mustc_enzh/$test_name/sinkhorn${delay}/test_wait$test_waitk
 mkdir -p ${OUTPUT}
 
-PORT=12345
 WORKERS=2
 BLEU_TOK=13a
 UNIT=word
@@ -26,7 +31,7 @@ if [[ ${TGT} == "zh" ]]; then
   NO_SPACE="--no-space"
 fi
 
-gpu_id=1
+gpu_id=5
 
 CUDA_VISIBLE_DEVICES=$gpu_id simuleval \
   --src $SRC --tgt $TGT \
@@ -43,5 +48,8 @@ CUDA_VISIBLE_DEVICES=$gpu_id simuleval \
   --eval-latency-unit ${UNIT} \
   ${NO_SPACE} \
   --scores \
-  --port ${PORT} \
-  --workers ${WORKERS} --gpu
+  --port ${port} \
+  --workers ${WORKERS} --gpu \
+  --test-waitk $test_waitk
+
+done

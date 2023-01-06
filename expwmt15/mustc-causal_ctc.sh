@@ -9,16 +9,16 @@ USERDIR=~/simultaneous_translation/sinkhorn-simultrans/simultaneous_translation
 PYTHONPATH="$FAIRSEQ:$PYTHONPATH"
 
 
-DELAY=1
+DELAY=9
 TASK=ctc_delay${DELAY}
 
 save_dir=~/simultaneous_translation/sinkhorn-simultrans/checkpoints/$TASK
 
-CUDA_VISIBLE_DEVICES=4,5,6,7 python -m fairseq_cli.train ${DATA} --user-dir ${USERDIR} \
+CUDA_VISIBLE_DEVICES=3 python -m fairseq_cli.train ${DATA} --user-dir ${USERDIR} \
     -s ${SRC} -t ${TGT} \
     --train-subset train \
-    --max-tokens 4000 \
-    --update-freq 2 \
+    --max-tokens 8000 \
+    --update-freq 4 \
     --task translation_infer \
     --inference-config-yaml infer_mt.yaml \
     --arch causal_encoder_iwslt_de_en --delay ${DELAY} \
@@ -28,7 +28,7 @@ CUDA_VISIBLE_DEVICES=4,5,6,7 python -m fairseq_cli.train ${DATA} --user-dir ${US
     --optimizer adam --lr 0.00025 --lr-scheduler inverse_sqrt \
     --warmup-updates 4000 \
     --max-update 50000 \
-    --scoring sacrebleu --sacrebleu-tokenizer ja-mecab \
+    --scoring sacrebleu --sacrebleu-tokenizer zh \
     --eval-bleu \
     --eval-bleu-args '{"beam": 5, "max_len_a": 1, "max_len_b": 50}' \
     --eval-bleu-remove-bpe \
@@ -36,10 +36,10 @@ CUDA_VISIBLE_DEVICES=4,5,6,7 python -m fairseq_cli.train ${DATA} --user-dir ${US
     --wandb-project sinkhorn-mustc-enzh  --find-unused-parameters \
     --save-dir $save_dir \
     --no-epoch-checkpoints \
-    --save-interval-updates 500 \
+    --save-interval-updates 1000 \
     --keep-interval-updates 1 \
     --keep-best-checkpoints 1 \
-    --patience 20 \
+    --patience 10 \
     --log-format simple --log-interval 100 \
     --num-workers 4 \
     --seed 1 \

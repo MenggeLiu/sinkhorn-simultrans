@@ -9,16 +9,16 @@ USERDIR=~/simultaneous_translation/sinkhorn-simultrans/simultaneous_translation
 PYTHONPATH="$FAIRSEQ:$PYTHONPATH"
 
 
-DELAY=1
+DELAY=9
 TASK=ctc_delay${DELAY}
 
 save_dir=~/simultaneous_translation/sinkhorn-simultrans/checkpoints_wmt15/$TASK
 
-CUDA_VISIBLE_DEVICES=4,5,6,7 python -m fairseq_cli.train ${DATA} --user-dir ${USERDIR} \
+CUDA_VISIBLE_DEVICES=4 python -m fairseq_cli.train ${DATA} --user-dir ${USERDIR} \
     -s ${SRC} -t ${TGT} \
     --train-subset train \
-    --max-tokens 4000 \
-    --update-freq 4 \
+    --max-tokens 8000 \
+    --update-freq 8 \
     --task translation_infer \
     --inference-config-yaml infer_mt.yaml \
     --arch causal_encoder --delay ${DELAY} \
@@ -39,8 +39,8 @@ CUDA_VISIBLE_DEVICES=4,5,6,7 python -m fairseq_cli.train ${DATA} --user-dir ${US
     --save-interval-updates 2000 \
     --keep-interval-updates 1 \
     --keep-best-checkpoints 1 \
-    --patience 30 \
+    --patience 10 \
     --log-format simple --log-interval 100 \
-    --num-workers 8 \
+    --num-workers 16 \
     --seed 1 \
     --fp16
