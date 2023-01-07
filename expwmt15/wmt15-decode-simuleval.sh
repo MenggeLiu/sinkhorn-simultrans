@@ -3,8 +3,8 @@ set -e
 USERDIR=~/simultaneous_translation/sinkhorn-simultrans/simultaneous_translation
 
 
-delay=9
-port=12349
+delay=13
+port=12351
 
 CHECKPOINT=/home/liumengge/simultaneous_translation/sinkhorn-simultrans/checkpoints_wmt15/sinkhorn_delay${delay}_ft/checkpoint_best.pt
 
@@ -12,9 +12,9 @@ SRC=de
 TGT=en
 test_name=test
 AGENT=/home/liumengge/simultaneous_translation/sinkhorn-simultrans/eval/agents/simul_t2t_ctc_mgliu.py
-SRC_FILE=~/simultaneous_translation/simul_confi/data_raw/mustc_enzh/${test_name}.$SRC
-TGT_FILE=~/simultaneous_translation/simul_confi/data_raw/mustc_enzh/${test_name}.$TGT
-mustc_data_raw=~/simultaneous_translation/simul_confi/data_raw/wmt15_ende
+SRC_FILE=~/simultaneous_translation/simul_confi/data_raw/wmt15_ende/prep/${test_name}.$SRC
+TGT_FILE=~/simultaneous_translation/simul_confi/data_raw/wmt15_ende/prep/${test_name}.$TGT
+mustc_data_raw=~/simultaneous_translation/simul_confi/data_raw/wmt15_ende/prep
 mustc_data_bin=~/simultaneous_translation/simul_confi/data_bins/deen_wmt15
 
 for test_waitk in 1 3 5 7 9 11 13 200; do
@@ -31,11 +31,11 @@ if [[ ${TGT} == "zh" ]]; then
   NO_SPACE="--no-space"
 fi
 
-gpu_id=5
+gpu_id=0
 
 CUDA_VISIBLE_DEVICES=$gpu_id simuleval \
   --src $SRC --tgt $TGT \
-  --src_bpe_code $mustc_data_raw/bpe.30000.en \
+  --src_bpe_code $mustc_data_raw/bpe.32000.en-de \
   --agent ${AGENT} \
   --user-dir ${USERDIR} \
   --source ${SRC_FILE} \
