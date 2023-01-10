@@ -350,6 +350,7 @@ class SimulTransTextAgentCTC(TextAgent):
         index = lprobs.argmax(dim=-1)
 
         index = index.item()
+        print('[index]:\t', index)
 
         if states.decoder_out.size(1) < 2:
             states.decoder_out = None
