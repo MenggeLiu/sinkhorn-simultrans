@@ -43,6 +43,14 @@ class SimulTransTextAgentCTC(TextAgent):
                             help="Path of data binary")
         # parser.add_argument("--max-len", type=int, default=100,
         #                     help="Max length of translation")
+        # parser.add_argument("--tgt-splitter-type", type=str, default="SentencePiece",
+        #                     help="Subword splitter type for target text.")
+        # parser.add_argument("--tgt-splitter-path", type=str, default=None,
+        #                     help="Subword splitter model path for target text.")
+        # parser.add_argument("--src-splitter-type", type=str, default="SentencePiece",
+        #                     help="Subword splitter type for source text.")
+        # parser.add_argument("--src-splitter-path", type=str, default=None,
+        #                     help="Subword splitter model path for source text.")
         parser.add_argument("--user-dir", type=str, default="examples/simultaneous_translation",
                             help="User directory for simultaneous translation")
         parser.add_argument("--max-len-a", type=int, default=1.2,
@@ -61,6 +69,12 @@ class SimulTransTextAgentCTC(TextAgent):
         parser.add_argument("--non-strict", default=False, action="store_true",
                             help="load parameters from checkpoint with strict=False.")
         parser.add_argument("--workers", type=int, default=1)
+        parser.add_argument('--lm-path', type=str, default="",
+                            help='path to your kenlm model.')
+        parser.add_argument("--lm-weight", type=float, default=0,
+                            help='the log prob is interpolated as: model_logp + lm_weight * lm_logp.')
+        parser.add_argument("--lm-topk", type=int, default=3,
+                            help='rescore top-k elements. If <= 0 then use all elements.')
 
         # mgliu
         parser.add_argument("--src", type=str, default='en',
@@ -68,7 +82,6 @@ class SimulTransTextAgentCTC(TextAgent):
         parser.add_argument("--tgt", type=str, default='de',
                             help="target language")
         parser.add_argument("--src_bpe_code", type=str, required=True)
-
         # fmt: on
         return parser
 
@@ -86,6 +99,9 @@ class SimulTransTextAgentCTC(TextAgent):
         # Load Model
         self.load_model_vocab(args)
 
+        # build word splitter
+        self.build_word_splitter(args)
+
         self.eos = DEFAULT_EOS
 
         self.src = args.src
@@ -102,15 +118,6 @@ class SimulTransTextAgentCTC(TextAgent):
 
         torch.set_grad_enabled(False)
         torch.set_num_threads(self.workers)
-
-    def get_src_bpe_model(self):
-        code_file = self.src_bpe_code
-        bpe_codes = codecs.open(code_file, encoding='utf-8')
-        src_bpe = apply_bpe.BPE(bpe_codes)
-        return src_bpe
-
-    def rmbpe(self,line):
-        return re.sub('(@@ )|(@@ ?$)', '', line)
 
     def load_model_vocab(self, args):
         filename = args.model_path
@@ -160,12 +167,25 @@ class SimulTransTextAgentCTC(TextAgent):
         self.pre_tokenizer = task.pre_tokenizer
 
         self.lm = None
+        self.lm_topk = args.lm_topk
+        self.lm_weight = args.lm_weight
+        if self.lm_weight > 0 and args.lm_path != "":
+            self.lm = kenlm.LanguageModel(args.lm_path)
+            logger.info("lm: {} weight: {}".format(args.lm_path, self.lm_weight))
 
         # logger.info(summary(self.model))
         logger.info("task: {}".format(task.__class__.__name__))
         logger.info("model: {}".format(self.model.__class__.__name__))
         logger.info("pre_tokenizer: {}".format(self.pre_tokenizer))
 
+    def build_word_splitter(self, args):
+        self.spm = {}
+        for lang in ['src', 'tgt']:
+            if getattr(args, f'{lang}_splitter_type', None):
+                path = getattr(args, f'{lang}_splitter_path', None)
+                if path:
+                    self.spm[lang] = spm.SentencePieceProcessor()
+                    self.spm[lang].Load(path)
 
     def initialize_states(self, states):
         states.units.source = ListEntry()
@@ -173,6 +193,9 @@ class SimulTransTextAgentCTC(TextAgent):
         states.enc_incremental_states = dict()
         states.last_token_index = self.blank_idx
 
+        if self.lm_weight > 0:
+            states.lm_states = kenlm.State()
+            self.lm.BeginSentenceWrite(states.lm_states)
 
     def build_states(self, args, client, sentence_id):
         # Initialize states here, for example add customized entry to states
@@ -186,6 +209,10 @@ class SimulTransTextAgentCTC(TextAgent):
             return tensor.cuda()
         else:
             return tensor.cpu()
+
+    # def segment_to_units(self, segment, states):
+    #     # Split a full word (segment) into subwords (units)
+    #     return self.spm['src'].EncodeAsPieces(segment)
 
     def segment_to_units(self, segment, states):
         # tok+bpe 输入经过bpe后直接返回
@@ -282,23 +309,123 @@ class SimulTransTextAgentCTC(TextAgent):
         # Happens after a read action.
         self.update_model_encoder(states)
 
-    def units_to_segment(self, units_queue, states):
-        # return units_queue.pop()
-        tokens = units_queue.value
-        # print("[tokens]:\t", tokens)
-        if len(tokens) > 128:  # for special error, infinite generate sub-word
-            return DEFAULT_EOS
-        if "@@" in tokens[-1]:  # return when token not complete
-            return
-        else:
-            # print("[tokens]:\t", tokens)
-            line = ' '.join(tokens)
-            line_rmbpe = self.rmbpe(line)
-            # print("tokens", line_rmbpe)
-            while len(units_queue.value) > 0:
-                units_queue.pop()
+    def units_to_segment(self, unit_queue, states):
+        """Merge sub word to full word.
+        queue: stores bpe tokens.
+        server: accept words.
 
-        return line_rmbpe.split()
+        Therefore, we need merge subwords into word. we find the first
+        subword that starts with BOW_PREFIX, then merge with subwords
+        prior to this subword, remove them from queue, send to server.
+        """
+
+        src_len = len(states.units.source)
+        tgt_len = len(states.units.target)
+        print("-----src_len:\t", src_len, '\t tgt_len:\t', tgt_len)
+
+
+        if self.segment_type == "char":
+            return self.units_to_segment_char(unit_queue, states)
+        tgt_dict = self.dict["tgt"]
+
+        # if segment starts with eos, send EOS
+        if tgt_dict.eos() == unit_queue[0]:
+            return DEFAULT_EOS
+
+        string_to_return = None
+        last_token_index = states.last_token_index
+
+        def decode(tok_idx):
+            toks = torch.LongTensor([last_token_index] + list(tok_idx))
+            toks = toks.unique_consecutive()
+            if toks.size(-1) == 1:
+                # all tokens equals last token
+                return None
+            toks = toks[1:]
+            if toks.eq(self.blank_idx).all():
+                toks = toks[-1:]
+            else:
+                toks = toks[toks != self.blank_idx]
+
+            states.last_token_index = toks[-1]
+
+            hyp = tgt_dict.string(
+                toks,
+                "sentencepiece",
+            )
+            if self.pre_tokenizer is not None:
+                hyp = self.pre_tokenizer.decode(hyp)
+            return hyp
+
+        # if force finish, there will be None's
+        segment = []
+        if None in unit_queue.value:
+            unit_queue.value.remove(None)
+
+        if (
+            (len(unit_queue) > 0 and tgt_dict.eos() == unit_queue[-1])
+            # or len(states.units.target) > self.max_len(src_len)
+        ):
+            print("!!!!decode")
+            hyp = decode(unit_queue)
+            string_to_return = ([hyp] if hyp else []) + [DEFAULT_EOS]
+        else:
+            print("!!!!no decode")
+            space_p = None
+            ignore = [last_token_index]
+            for p, unit_id in enumerate(unit_queue):
+                if p == 0:
+                    ignore += [unit_id]
+                token = tgt_dict.string([unit_id])
+                if (
+                    token.startswith(BOW_PREFIX)
+                    and unit_id not in ignore
+                ):
+                    """
+                    find the first tokens with escape symbolS
+                    that is not a continuation of previous tokens
+                    """
+                    space_p = p
+                    break
+            if space_p is not None:
+                for j in range(space_p):
+                    segment += [unit_queue.pop()]
+
+                hyp = decode(segment)
+                string_to_return = [hyp] if hyp else []
+
+                if tgt_dict.eos() == unit_queue[0]:
+                    string_to_return += [DEFAULT_EOS]
+
+        return string_to_return
+
+    def units_to_segment_char(self, unit_queue, states):
+        """ For chinese, direclty send tokens. """
+
+        tgt_dict = self.dict["tgt"]
+
+        if None in unit_queue.value:
+            unit_queue.value.remove(None)
+
+        src_len = len(states.units.source)
+        if (
+            (len(unit_queue) > 0 and tgt_dict.eos() == unit_queue[-1])
+            or
+            (states.finish_read() and len(states.units.target) > self.max_len(src_len))
+        ):
+            return DEFAULT_EOS
+
+        last_token_index = states.last_token_index
+        unit_id = unit_queue.value.pop()
+
+        if unit_id == last_token_index:
+            return None
+
+        states.last_token_index = unit_id
+        token = tgt_dict.string([unit_id])
+
+        # even if replace with space, it will be stripped by the server :(
+        return token.replace(BOW_PREFIX, "")
 
     def policy(self, states):
 
@@ -345,12 +472,7 @@ class SimulTransTextAgentCTC(TextAgent):
             [states.decoder_out[:, :1]], log_probs=True
         )
 
-        lprobs = lprobs.squeeze()
-
-        index = lprobs.argmax(dim=-1)
-
-        index = index.item()
-        print('[index]:\t', index)
+        index = self.lm_rescore(lprobs, states)
 
         if states.decoder_out.size(1) < 2:
             states.decoder_out = None
@@ -367,23 +489,34 @@ class SimulTransTextAgentCTC(TextAgent):
             self.model.decoder.clear_cache(states.dec_incremental_states)
             index = None
 
-        if index != self.dict['tgt'].eos_index:
-            token = self.dict['tgt'].string([index])
-        else:
-            if states.finish_read():
-                token = self.dict['tgt'].eos_word
-            else:
-                return ''
+        return index
 
-        print('[token]:\t', token)
+    def lm_rescore(self, lprobs, states) -> int:
+        lprobs = lprobs.squeeze()
 
-        if 50 > 0: # max len limit
-            # print(len(states.source), states.source)
-            # print(len(states.target), states.target)
-            if len(states.target) - len(states.source) > 50:
-                token = self.dict['tgt'].eos_word
+        index = lprobs.argmax(dim=-1)
 
-        torch.cuda.empty_cache()
+        index = index.item()
 
-        return token
+        if self.lm_weight > 0:
+            tgt_dict = self.dict["tgt"]
+            indices = range(len(tgt_dict))
+            if self.lm_topk > 0:
+                lprobs, indices = torch.topk(lprobs, self.lm_topk, dim=-1, sorted=False)
 
+            value = float("-inf")
+            best_state = None
+            for lp, i in zip(lprobs, indices):
+                tmp_state = kenlm.State()
+                token = tgt_dict.string([i])
+                cur_p = lp + self.lm.BaseScore(states.lm_states, token, tmp_state) * self.lm_weight
+                if cur_p > value:
+                    value = cur_p
+                    index = i
+                    best_state = tmp_state
+
+            # update lm states
+            if index != tgt_dict.bos():
+                states.lm_states = best_state
+
+        return index
