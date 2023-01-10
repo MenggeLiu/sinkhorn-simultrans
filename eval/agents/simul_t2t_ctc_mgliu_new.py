@@ -396,7 +396,7 @@ class SimulTransTextAgentCTC(TextAgent):
 
                 if tgt_dict.eos() == unit_queue[0]:
                     string_to_return += [DEFAULT_EOS]
-
+        print("[string_to_return]:\t", string_to_return)
         return string_to_return
 
     def units_to_segment_char(self, unit_queue, states):
