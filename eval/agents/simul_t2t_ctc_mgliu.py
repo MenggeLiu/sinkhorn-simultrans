@@ -192,7 +192,7 @@ class SimulTransTextAgentCTC(TextAgent):
         # print("segment", segment)
         # return [segment]
         # src preprocess tok -> bpe
-        print("[segment]:\t", segment)
+        # print("[segment]:\t", segment)
         # Split a full word (segment) into subwords (units)
         segment_norm = self.mpn.normalize(segment)
         # print("segment", segment)
@@ -350,7 +350,7 @@ class SimulTransTextAgentCTC(TextAgent):
         index = lprobs.argmax(dim=-1)
 
         index = index.item()
-        print('[index]:\t', index)
+        # print('[index]:\t', index)
 
         if states.decoder_out.size(1) < 2:
             states.decoder_out = None
@@ -375,7 +375,7 @@ class SimulTransTextAgentCTC(TextAgent):
             else:
                 return ''
 
-        print('[token]:\t', token)
+        # print('[token]:\t', token)
 
         if 50 > 0: # max len limit
             # print(len(states.source), states.source)

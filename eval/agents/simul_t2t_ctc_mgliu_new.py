@@ -213,6 +213,11 @@ class SimulTransTextAgentCTC(TextAgent):
     # def segment_to_units(self, segment, states):
     #     # Split a full word (segment) into subwords (units)
     #     return self.spm['src'].EncodeAsPieces(segment)
+    def get_src_bpe_model(self):
+        code_file = self.src_bpe_code
+        bpe_codes = codecs.open(code_file, encoding='utf-8')
+        src_bpe = apply_bpe.BPE(bpe_codes)
+        return src_bpe
 
     def segment_to_units(self, segment, states):
         # tok+bpe 输入经过bpe后直接返回
