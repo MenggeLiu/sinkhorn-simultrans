@@ -192,7 +192,7 @@ class SimulTransTextAgentCTC(TextAgent):
         # print("segment", segment)
         # return [segment]
         # src preprocess tok -> bpe
-        # print("[segment]:\t", segment)
+        print("[segment]:\t", segment)
         # Split a full word (segment) into subwords (units)
         segment_norm = self.mpn.normalize(segment)
         # print("segment", segment)
@@ -356,15 +356,15 @@ class SimulTransTextAgentCTC(TextAgent):
         else:
             states.decoder_out = states.decoder_out[:, 1:]
 
-        if (
-            self.force_finish
-            and index == self.dict["tgt"].eos()
-            and not states.finish_read()
-        ):
-            # If we want to force finish the translation
-            # (don't stop before finish reading), return a None
-            self.model.decoder.clear_cache(states.dec_incremental_states)
-            index = None
+        # if (
+        #     self.force_finish
+        #     and index == self.dict["tgt"].eos()
+        #     and not states.finish_read()
+        # ):
+        #     # If we want to force finish the translation
+        #     # (don't stop before finish reading), return a None
+        #     self.model.decoder.clear_cache(states.dec_incremental_states)
+        #     index = None
 
         if index != self.dict['tgt'].eos_index:
             token = self.dict['tgt'].string([index])
@@ -373,6 +373,8 @@ class SimulTransTextAgentCTC(TextAgent):
                 token = self.dict['tgt'].eos_word
             else:
                 return ''
+
+        print('[token]:\t', token)
 
         if 50 > 0: # max len limit
             # print(len(states.source), states.source)
