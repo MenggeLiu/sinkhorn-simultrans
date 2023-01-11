@@ -224,7 +224,7 @@ class SimulTransTextAgentCTC(TextAgent):
         # print("segment", segment)
         # return [segment]
         # src preprocess tok -> bpe
-        print("[segment]:\t", segment)
+        # print("[segment]:\t", segment)
         # Split a full word (segment) into subwords (units)
         segment_norm = self.mpn.normalize(segment)
         # print("segment", segment)
@@ -329,7 +329,7 @@ class SimulTransTextAgentCTC(TextAgent):
 
         src_len = len(states.units.source)
         tgt_len = len(states.units.target)
-        print("-----src_len:\t", src_len, '\t tgt_len:\t', tgt_len)
+        # print("-----src_len:\t", src_len, '\t tgt_len:\t', tgt_len)
 
 
         if self.segment_type == "char":
@@ -380,14 +380,14 @@ class SimulTransTextAgentCTC(TextAgent):
             (len(unit_queue) > 0 and tgt_dict.eos() == unit_queue[-1])
             # or len(states.units.target) > self.max_len(src_len)
         ):
-            print("!!!!decode")
+            # print("!!!!decode")
             hyp = decode(unit_queue)
             string_to_return = ([hyp] if hyp else []) + [DEFAULT_EOS]
         else:
-            print("!!!!no decode")
+            # print("!!!!no decode")
             space_p = None
             ignore = [last_token_index]
-            print("[unit_queue]:\t", unit_queue)
+            # print("[unit_queue]:\t", unit_queue)
             for p, unit_id in enumerate(unit_queue):
                 if p == 0:
                     ignore += [unit_id]
@@ -408,12 +408,12 @@ class SimulTransTextAgentCTC(TextAgent):
                     segment += [unit_queue.pop()]
 
                 hyp = decode(segment)
-                print('[hyp]:\t', hyp)
+                # print('[hyp]:\t', hyp)
                 string_to_return = [hyp] if hyp else []
 
                 if len(unit_queue)>0 and tgt_dict.eos() == unit_queue[0]:
                     string_to_return += [DEFAULT_EOS]
-        print("[string_to_return]:\t", string_to_return)
+        # print("[string_to_return]:\t", string_to_return)
         return string_to_return
 
     def units_to_segment_char(self, unit_queue, states):
