@@ -399,9 +399,10 @@ class SimulTransTextAgentCTC(TextAgent):
                     segment += [unit_queue.pop()]
 
                 hyp = decode(segment)
+                print('[hyp]:\t', hyp)
                 string_to_return = [hyp] if hyp else []
 
-                if tgt_dict.eos() == unit_queue[0]:
+                if len(unit_queue)>0 and tgt_dict.eos() == unit_queue[0]:
                     string_to_return += [DEFAULT_EOS]
         print("[string_to_return]:\t", string_to_return)
         return string_to_return
