@@ -382,6 +382,7 @@ class SimulTransTextAgentCTC(TextAgent):
                 if p == 0:
                     ignore += [unit_id]
                 token = tgt_dict.string([unit_id])
+                print('token:\t', token)
                 if (
                     token.startswith(BOW_PREFIX)
                     and unit_id not in ignore
