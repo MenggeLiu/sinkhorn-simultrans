@@ -385,14 +385,14 @@ class SimulTransTextAgentCTC(TextAgent):
                 token = tgt_dict.string([unit_id])
                 # print('token:\t', token)
                 if (
-                    token.startswith(BOW_PREFIX)
+                    not token.endswith('@@')
                     and unit_id not in ignore
                 ):
                     """
                     find the first tokens with escape symbolS
                     that is not a continuation of previous tokens
                     """
-                    space_p = p
+                    space_p = p + 1
                     break
             if space_p is not None:
                 for j in range(space_p):
