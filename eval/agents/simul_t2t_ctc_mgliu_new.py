@@ -314,6 +314,9 @@ class SimulTransTextAgentCTC(TextAgent):
         # Happens after a read action.
         self.update_model_encoder(states)
 
+    def rmbpe(self,line):
+        return re.sub('(@@ )|(@@ ?$)', '', line)
+
     def units_to_segment(self, unit_queue, states):
         """Merge sub word to full word.
         queue: stores bpe tokens.
@@ -356,8 +359,14 @@ class SimulTransTextAgentCTC(TextAgent):
 
             hyp = tgt_dict.string(
                 toks,
-                "sentencepiece",
             )
+
+            # hyp = tgt_dict.string(
+            #     toks,
+            #     "sentencepiece",
+            # )
+
+            hyp = self.rmbpe(hyp)
             if self.pre_tokenizer is not None:
                 hyp = self.pre_tokenizer.decode(hyp)
             return hyp
