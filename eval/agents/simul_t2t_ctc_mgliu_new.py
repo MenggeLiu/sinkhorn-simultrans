@@ -378,11 +378,12 @@ class SimulTransTextAgentCTC(TextAgent):
             print("!!!!no decode")
             space_p = None
             ignore = [last_token_index]
+            print("[unit_queue]:\t", unit_queue)
             for p, unit_id in enumerate(unit_queue):
                 if p == 0:
                     ignore += [unit_id]
                 token = tgt_dict.string([unit_id])
-                print('token:\t', token)
+                # print('token:\t', token)
                 if (
                     token.startswith(BOW_PREFIX)
                     and unit_id not in ignore
